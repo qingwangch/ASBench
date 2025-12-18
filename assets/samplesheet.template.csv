@@ -1,0 +1,7 @@
+sample,group,fastq1,fastq2,strandedness
+D5_1,test,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D5_1_R1.fq.gz,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D5_1_R2.fq.gz,unstranded
+D5_2,test,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D5_2_R1.fq.gz,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D5_2_R2.fq.gz,unstranded
+D5_3,test,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D5_3_R1.fq.gz,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D5_3_R2.fq.gz,unstranded
+D6_1,control,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D6_1_R1.fq.gz,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D6_1_R2.fq.gz,unstranded
+D6_2,control,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D6_2_R1.fq.gz,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D6_2_R2.fq.gz,unstranded
+D6_3,control,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D6_3_R1.fq.gz,/vast/projects/quartet_rna_refdata/github/ASBench/demo/downsample_1M/P_ILM_L8_B1_D6_3_R2.fq.gz,unstranded
