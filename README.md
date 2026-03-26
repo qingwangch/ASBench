@@ -1,215 +1,1012 @@
 # ASBench
 
-ASBench is a modular Nextflow (DSL2) pipeline for benchmarking alternative splicing (AS) and isoform-level analyses using short-read RNA-seq data. It integrates alignment, quantification, differential expression, AS event detection, and splicing-aware QC in a unified, extensible framework.
+ASBench is a modular Nextflow DSL2 pipeline for benchmarking representative short-read RNA-seq analysis workflows for transcript quantification, differential expression, and alternative splicing.
 
-## Contents
+The current first release supports five representative workflow combinations:
 
-- [ASBench](#asbench)
-  - [Contents](#contents)
-  - [Features](#features)
-  - [Requirements](#requirements)
-  - [Quick start](#quick-start)
-    - [Prepare a samplesheet](#prepare-a-samplesheet)
-    - [Run the pipeline](#run-the-pipeline)
-  - [Pipeline overview](#pipeline-overview)
-  - [Directory structure](#directory-structure)
-    - [Key modules](#key-modules)
-  - [Results structure](#results-structure)
-    - [Standalone scripts](#standalone-scripts)
-    - [Profiles and HPC](#profiles-and-hpc)
-  - [Citation](#citation)
-  - [Contact](#contact)
+1. `star_stringtie_suppa2`
+2. `hisat2_cuffdiff`
+3. `star_express_limma`
+4. `star_rsem_deseq2`
+5. `star_majiq`
+- `star_majiq` is currently an initial implementation and may require additional MAJIQ-specific configuration depending on the runtime environment.
+---
 
-## Features
+## Overview
 
-- Alignment with STAR or HISAT2
-- Isoform and gene quantification via StringTie/Ballgown
-- Alternative splicing analysis using SUPPA2 and MAJIQ
-- Differential expression using DESeq2, edgeR, and limma-voom
-- Junction- and splicing-aware QC metrics
-- Fully modular Nextflow DSL2 design
-- Slurm/HPC-ready configuration
+ASBench provides a unified framework for running and comparing different combinations of:
+
+- aligners
+- quantification tools# ASBench
+
+ASBench is a modular Nextflow DSL2 pipeline for benchmarking representative short-read RNA-seq analysis workflows for transcript quantification, differential expression, and alternative splicing.
+
+The current first release supports five representative workflow combinations:
+
+1. `star_stringtie_suppa2`
+2. `hisat2_cuffdiff`
+3. `star_express_limma`
+4. `star_rsem_deseq2`
+5. `star_majiq`
+
+---
+
+## Overview
+
+ASBench provides a unified framework for running and comparing different combinations of:
+
+- aligners
+- quantification tools
+- differential expression tools
+- splicing analysis tools
+
+The workflow is organized as reusable Nextflow DSL2 modules.
+
+---
+
+## Currently supported workflow combinations
+
+### 1. `star_stringtie_suppa2`
+
+```text
+FASTQ
+→ STAR (genome alignment + geneCounts)
+→ StringTie / Ballgown
+→ SUPPA2 event generation
+→ sample-level PSI / TPM
+→ group-level PSI / TPM merge
+→ SUPPA2 diffSplice
+```
+
+### 2. `hisat2_cuffdiff`
+
+```text
+FASTQ
+→ HISAT2
+→ Cuffdiff
+```
+
+### 3. `star_express_limma`
+
+```text
+FASTQ
+→ STAR (transcriptome mode)
+→ eXpress
+→ quant matrix construction
+→ limma
+```
+
+### 4. `star_rsem_deseq2`
+
+```text
+FASTQ
+→ STAR (transcriptome mode)
+→ RSEM
+→ quant matrix construction
+→ DESeq2
+```
+
+### 5. `star_majiq`
+
+```text
+FASTQ
+→ STAR (genome alignment)
+→ MAJIQ config generation
+→ MAJIQ build
+→ MAJIQ deltapsi
+```
+
+---
+
+## Repository structure
+
+```text
+ASBench/
+├── assets/
+│   └── samplesheet.template.csv
+├── bin/
+├── conf/
+│   └── modules.config
+├── demo/
+├── main.nf
+├── nextflow.config
+├── modules/
+│   ├── align/
+│   │   ├── star.nf
+│   │   └── hisat2_cuffdiff.nf
+│   ├── quantify_isoform/
+│   │   ├── stringtie_ballgown.nf
+│   │   ├── express.nf
+│   │   └── rsem.nf
+│   ├── quantify_gene/
+│   │   └── cuffdiff.nf
+│   ├── de/
+│   │   ├── limma.nf
+│   │   └── deseq2.nf
+│   ├── as_event/
+│   │   ├── suppa2_events.nf
+│   │   ├── suppa2_psi.nf
+│   │   ├── suppa2_merge_group.nf
+│   │   ├── suppa2_diffsplice.nf
+│   │   ├── majiq_build.nf
+│   │   └── majiq_delta_psi.nf
+│   └── utils/
+│       ├── build_gene_count_matrix.nf
+│       ├── build_quant_matrix.nf
+│       └── build_majiq_config.nf
+├── scripts/
+│   ├── build_gene_count_matrix.py
+│   ├── build_quant_matrix.py
+│   ├── build_majiq_config.py
+│   ├── run_deseq2.R
+│   └── run_limma.R
+└── README.md
+```
+
+---
 
 ## Requirements
 
-- Nextflow 22.x or later (DSL2 enabled)
-- Java 11 or later
-- One of:
-  - Singularity/Apptainer (recommended)
-  - Conda (for local testing)
-- Reference resources:
-  - STAR index
-  - GTF annotation (e.g. GENCODE)
+- Nextflow (DSL2)
+- Java 11+
+- Apptainer / Singularity recommended
+- Tool-specific dependencies available in containers or system environment:
+  - STAR
+  - HISAT2
+  - StringTie
+  - SUPPA2
+  - eXpress
+  - RSEM
+  - Cuffdiff
+  - MAJIQ
+  - R with DESeq2 / limma / edgeR as needed
 
-## Quick start
+---
 
-### Prepare a samplesheet
+## Input samplesheet
 
-Copy the template:
+Example template:
 
-```bash
-cp assets/samplesheet.template.csv my_samplesheet.csv
-```
-Samplesheet format:
 ```csv
 sample,group,strandedness,fastq1,fastq2
 D5_1,control,unstranded,/path/D5_1_R1.fq.gz,/path/D5_1_R2.fq.gz
 D5_2,control,unstranded,/path/D5_2_R1.fq.gz,/path/D5_2_R2.fq.gz
 D6_1,test,unstranded,/path/D6_1_R1.fq.gz,/path/D6_1_R2.fq.gz
+D6_2,test,unstranded,/path/D6_2_R1.fq.gz,/path/D6_2_R2.fq.gz
 ```
 
 Columns:
-	
-    •	sample: unique sample identifier
-	•	group: experimental condition (used for DE and diffSplice)
-	•	strandedness: library strandedness
-	•	fastq1, fastq2: paired-end FASTQ files
 
-### Run the pipeline
+- `sample`: unique sample ID
+- `group`: biological condition / contrast group
+- `strandedness`: library strandedness
+- `fastq1`, `fastq2`: paired-end FASTQ files
+
+---
+
+## Usage
+
+### General syntax
+
 ```bash
 nextflow run main.nf \
   -profile wehi \
-  --samplesheet my_samplesheet.csv \
+  --pipeline <pipeline_name> \
+  --samplesheet assets/samplesheet.template.csv \
+  --outdir results \
+  [other pipeline-specific parameters]
+```
+
+---
+
+## Pipeline-specific examples
+
+### 1. STAR + StringTie + SUPPA2
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_stringtie_suppa2 \
+  --samplesheet assets/samplesheet.template.csv \
   --star_index /path/to/star_index \
-  --gtf /path/to/gencode.gtf \
+  --gtf /path/to/annotation.gtf \
   --outdir results
 ```
 
-## Pipeline overview
-```text
-FASTQ
-  ↓
-Alignment (STAR / HISAT2)
-  ↓
-Isoform quantification (StringTie)
-  ↓
-AS event generation (SUPPA2)
-  ↓
-PSI / TPM calculation
-  ↓
-Differential splicing (SUPPA2 diffSplice)
+### 2. HISAT2 + Cuffdiff
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline hisat2_cuffdiff \
+  --samplesheet assets/samplesheet.template.csv \
+  --hisat2_index /path/to/hisat2_index \
+  --genome_fasta /path/to/genome.fa \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
 ```
-A visual summary is available in flowchart.png.
 
+### 3. STAR + eXpress + limma
 
-## Directory structure
-```text
-ASBench/
-├── assets/                  Sample sheets and QC configs
-├── bin/                     Helper scripts (Python/R)
-├── conf/                    Cluster and profile configs
-├── demo/                    Small demo datasets
-├── modules/                 Nextflow DSL2 modules
-│   ├── align/               STAR/HISAT2 alignment
-│   ├── quantify_isoform/    StringTie, RSEM, etc.
-│   ├── as_event/            SUPPA2/MAJIQ modules
-│   ├── de/                  Differential expression
-│   ├── qc/                  QC steps (FastQC, MultiQC)
-│   └── qc_metrics/          Junction accuracy metrics
-├── scripts/                 Standalone analysis scripts
-├── main.nf                  Main Nextflow workflow
-├── nextflow.config          Global configuration
-├── flowchart.png            Pipeline overview figure
-└── README.md
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_express_limma \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --transcriptome_fasta /path/to/transcripts.fa \
+  --outdir results
 ```
-### Key modules
 
-**Alignment**
+### 4. STAR + RSEM + DESeq2
 
-	•	modules/align/star.nf
-	•	modules/align/hisat2.nf
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_rsem_deseq2 \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --rsem_index /path/to/rsem_reference \
+  --outdir results
+```
 
-**Isoform quantification**
+### 5. STAR + MAJIQ
 
-	•	modules/quantify_isoform/stringtie_ballgown.nf
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_majiq \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
 
-**Alternative splicing**
+---
 
-	•	modules/as_event/suppa2_events.nf
-	•	modules/as_event/suppa2_psi.nf
-	•	modules/as_event/suppa2_diffsplice.nf
-	•	modules/as_event/majiq_build.nf
-	•	modules/as_event/majiq_psi.nf
+## Main parameters
 
-**Differential expression**
+### Common
+- `--pipeline`
+- `--samplesheet`
+- `--outdir`
 
-	•	modules/de/deseq2.nf
-	•	modules/de/edger_ql.nf
-	•	modules/de/limma_voom.nf
+### STAR-based workflows
+- `--star_index`
+- `--star_mode` (set internally in `main.nf` for supported workflows)
 
-## Results structure
-Example output directory:
+### HISAT2/Cuffdiff
+- `--hisat2_index`
+- `--genome_fasta`
+- `--gtf`
+
+### SUPPA2
+- `--gtf`
+- `--threads_suppa2`
+- `--mem_suppa2`
+- `--time_suppa2`
+
+### eXpress
+- `--transcriptome_fasta`
+
+### RSEM
+- `--rsem_index`
+
+### MAJIQ
+- `--gtf`
+- `--threads_majiq`
+
+---
+
+## Output structure
+
+Output depends on pipeline branch. Typical top-level structure:
+
 ```text
 results/
 ├── 02_align/
-│   └── star/
 ├── 03_quant/
-│   └── stringtie/
-├── 05_as/
-│   └── suppa2/
-│       ├── events/
-│       ├── psi/
-│       └── diffsplice/
-```
-Subdirectories:
-
-	•	events/: merged AS event definitions (*.ioe)
-	•	psi/: per-sample PSI and TPM files
-	•	diffsplice/: differential splicing results
-
-### Standalone scripts
-Located in bin/ and scripts/:
-
-	•	bin/prepDE.py: StringTie to DE matrices
-	•	bin/build_tpm_matrix.py: TPM matrix construction
-	•	scripts/run_suppa2_diffsplice.py: standalone SUPPA2 diffSplice
-	•	bin/junction_accuracy.py: splice junction benchmarking
-	•	bin/run_junction_accuracy_nf.py: helper wrapper for junction accuracy
-
-These can be used independently of Nextflow if needed.
-
-### Profiles and HPC
-
-Example Slurm profile:
-```
--profile wehi
+├── 04_matrix/
+├── 05_de/
+└── 05_as/
 ```
 
-Defined in:
+Examples:
 
-	•	conf/wehi_slurm.config
+- `star_stringtie_suppa2`
+  - `02_align/star/`
+  - `03_quant/stringtie/`
+  - `05_as/suppa2/events/`
+  - `05_as/suppa2/psi/`
+  - `05_as/suppa2/merged/`
+  - `05_as/suppa2/diffsplice/`
 
-You can add additional profiles for other clusters.
+- `star_express_limma`
+  - `02_align/star/`
+  - `03_quant/express/`
+  - `04_quant_matrix/`
+  - `05_de/limma/`
 
+- `star_rsem_deseq2`
+  - `02_align/star/`
+  - `03_quant/rsem/`
+  - `04_quant_matrix/`
+  - `05_de/deseq2/`
 
-**Common issues and notes**
+---
 
-	•	SUPPA2 diffSplice expects merged PSI/TPM matrices per condition
-	•	Do not pass lists of per-sample files directly to suppa diffSplice
-	•	For complex contrasts, prefer a standalone Python wrapper
-	•	Always verify group labels in the samplesheet
+## Notes and current limitations
 
-## Citation
+- The current release is focused on a small number of representative workflow combinations rather than all possible tool combinations.
+- `build_gene_count_matrix.nf` is currently included in the repository but not yet wired into a default branch in `main.nf`.
+- MAJIQ support is currently an initial implementation and may require additional configuration depending on the environment.
+- Some additional modules in the repository may still require refinement for production use.
 
-If you use ASBench, please cite the relevant tools:
-
-	•	STAR
-    •	Hisat2
-	•	Cuffdiff
-    •	Express
-    •	RSEM
-    •	StringTie
-	•	SUPPA2
-	•	MAJIQ
-    •	edgeR
-	•	Nextflow
+---
 
 ## Contact
 
-**Maintainer:**
+**Maintainer**
 
-Qingwang Chen: qwchen20@fudan.edu.cn
+Qingwang Chen  
+qwchen20@fudan.edu.cn
 
-Duo Wang, 18801232285@163.com
+Duo Wang  
+18801232285@163.com
+
+**Project:** ASBench (Alternative Splicing Benchmarking)# ASBench
+
+ASBench is a modular Nextflow DSL2 pipeline for benchmarking representative short-read RNA-seq analysis workflows for transcript quantification, differential expression, and alternative splicing.
+
+The current first release supports five representative workflow combinations:
+
+1. `star_stringtie_suppa2`
+2. `hisat2_cuffdiff`
+3. `star_express_limma`
+4. `star_rsem_deseq2`
+5. `star_majiq`
+
+---
+
+## Overview
+
+ASBench provides a unified framework for running and comparing different combinations of:
+
+- aligners
+- quantification tools
+- differential expression tools
+- splicing analysis tools
+
+The workflow is organized as reusable Nextflow DSL2 modules.
+
+---
+
+## Currently supported workflow combinations
+
+### 1. `star_stringtie_suppa2`
+
+```text
+FASTQ
+→ STAR (genome alignment + geneCounts)
+→ StringTie / Ballgown
+→ SUPPA2 event generation
+→ sample-level PSI / TPM
+→ group-level PSI / TPM merge
+→ SUPPA2 diffSplice
+```
+
+### 2. `hisat2_cuffdiff`
+
+```text
+FASTQ
+→ HISAT2
+→ Cuffdiff
+```
+
+### 3. `star_express_limma`
+
+```text
+FASTQ
+→ STAR (transcriptome mode)
+→ eXpress
+→ quant matrix construction
+→ limma
+```
+
+### 4. `star_rsem_deseq2`
+
+```text
+FASTQ
+→ STAR (transcriptome mode)
+→ RSEM
+→ quant matrix construction
+→ DESeq2
+```
+
+### 5. `star_majiq`
+
+```text
+FASTQ
+→ STAR (genome alignment)
+→ MAJIQ config generation
+→ MAJIQ build
+→ MAJIQ deltapsi
+```
+
+---
+
+## Repository structure
+
+```text
+ASBench/
+├── assets/
+│   └── samplesheet.template.csv
+├── bin/
+├── conf/
+│   └── modules.config
+├── demo/
+├── main.nf
+├── nextflow.config
+├── modules/
+│   ├── align/
+│   │   ├── star.nf
+│   │   └── hisat2_cuffdiff.nf
+│   ├── quantify_isoform/
+│   │   ├── stringtie_ballgown.nf
+│   │   ├── express.nf
+│   │   └── rsem.nf
+│   ├── quantify_gene/
+│   │   └── cuffdiff.nf
+│   ├── de/
+│   │   ├── limma.nf
+│   │   └── deseq2.nf
+│   ├── as_event/
+│   │   ├── suppa2_events.nf
+│   │   ├── suppa2_psi.nf
+│   │   ├── suppa2_merge_group.nf
+│   │   ├── suppa2_diffsplice.nf
+│   │   ├── majiq_build.nf
+│   │   └── majiq_delta_psi.nf
+│   └── utils/
+│       ├── build_gene_count_matrix.nf
+│       ├── build_quant_matrix.nf
+│       └── build_majiq_config.nf
+├── scripts/
+│   ├── build_gene_count_matrix.py
+│   ├── build_quant_matrix.py
+│   ├── build_majiq_config.py
+│   ├── run_deseq2.R
+│   └── run_limma.R
+└── README.md
+```
+
+---
+
+## Requirements
+
+- Nextflow (DSL2)
+- Java 11+
+- Apptainer / Singularity recommended
+- Tool-specific dependencies available in containers or system environment:
+  - STAR
+  - HISAT2
+  - StringTie
+  - SUPPA2
+  - eXpress
+  - RSEM
+  - Cuffdiff
+  - MAJIQ
+  - R with DESeq2 / limma / edgeR as needed
+
+---
+
+## Input samplesheet
+
+Example template:
+
+```csv
+sample,group,strandedness,fastq1,fastq2
+D5_1,control,unstranded,/path/D5_1_R1.fq.gz,/path/D5_1_R2.fq.gz
+D5_2,control,unstranded,/path/D5_2_R1.fq.gz,/path/D5_2_R2.fq.gz
+D6_1,test,unstranded,/path/D6_1_R1.fq.gz,/path/D6_1_R2.fq.gz
+D6_2,test,unstranded,/path/D6_2_R1.fq.gz,/path/D6_2_R2.fq.gz
+```
+
+Columns:
+
+- `sample`: unique sample ID
+- `group`: biological condition / contrast group
+- `strandedness`: library strandedness
+- `fastq1`, `fastq2`: paired-end FASTQ files
+
+---
+
+## Usage
+
+### General syntax
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline <pipeline_name> \
+  --samplesheet assets/samplesheet.template.csv \
+  --outdir results \
+  [other pipeline-specific parameters]
+```
+
+---
+
+## Pipeline-specific examples
+
+### 1. STAR + StringTie + SUPPA2
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_stringtie_suppa2 \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
+
+### 2. HISAT2 + Cuffdiff
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline hisat2_cuffdiff \
+  --samplesheet assets/samplesheet.template.csv \
+  --hisat2_index /path/to/hisat2_index \
+  --genome_fasta /path/to/genome.fa \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
+
+### 3. STAR + eXpress + limma
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_express_limma \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --transcriptome_fasta /path/to/transcripts.fa \
+  --outdir results
+```
+
+### 4. STAR + RSEM + DESeq2
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_rsem_deseq2 \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --rsem_index /path/to/rsem_reference \
+  --outdir results
+```
+
+### 5. STAR + MAJIQ
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_majiq \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
+
+---
+
+## Main parameters
+
+### Common
+- `--pipeline`
+- `--samplesheet`
+- `--outdir`
+
+### STAR-based workflows
+- `--star_index`
+- `--star_mode` (set internally in `main.nf` for supported workflows)
+
+### HISAT2/Cuffdiff
+- `--hisat2_index`
+- `--genome_fasta`
+- `--gtf`
+
+### SUPPA2
+- `--gtf`
+- `--threads_suppa2`
+- `--mem_suppa2`
+- `--time_suppa2`
+
+### eXpress
+- `--transcriptome_fasta`
+
+### RSEM
+- `--rsem_index`
+
+### MAJIQ
+- `--gtf`
+- `--threads_majiq`
+
+---
+
+## Output structure
+
+Output depends on pipeline branch. Typical top-level structure:
+
+```text
+results/
+├── 02_align/
+├── 03_quant/
+├── 04_matrix/
+├── 05_de/
+└── 05_as/
+```
+
+Examples:
+
+- `star_stringtie_suppa2`
+  - `02_align/star/`
+  - `03_quant/stringtie/`
+  - `05_as/suppa2/events/`
+  - `05_as/suppa2/psi/`
+  - `05_as/suppa2/merged/`
+  - `05_as/suppa2/diffsplice/`
+
+- `star_express_limma`
+  - `02_align/star/`
+  - `03_quant/express/`
+  - `04_quant_matrix/`
+  - `05_de/limma/`
+
+- `star_rsem_deseq2`
+  - `02_align/star/`
+  - `03_quant/rsem/`
+  - `04_quant_matrix/`
+  - `05_de/deseq2/`
+
+---
+
+## Notes and current limitations
+
+- The current release is focused on a small number of representative workflow combinations rather than all possible tool combinations.
+- `build_gene_count_matrix.nf` is currently included in the repository but not yet wired into a default branch in `main.nf`.
+- MAJIQ support is currently an initial implementation and may require additional configuration depending on the environment.
+- Some additional modules in the repository may still require refinement for production use.
+
+---
+
+## Contact
+
+**Maintainer**
+
+Qingwang Chen  
+qwchen20@fudan.edu.cn
+
+Duo Wang  
+18801232285@163.com
+
+**Project:** ASBench (Alternative Splicing Benchmarking)
+- differential expression tools
+- splicing analysis tools
+
+The workflow is organized as reusable Nextflow DSL2 modules.
+
+---
+
+## Currently supported workflow combinations
+
+### 1. `star_stringtie_suppa2`
+
+```text
+FASTQ
+→ STAR (genome alignment + geneCounts)
+→ StringTie / Ballgown
+→ SUPPA2 event generation
+→ sample-level PSI / TPM
+→ group-level PSI / TPM merge
+→ SUPPA2 diffSplice
+```
+
+### 2. `hisat2_cuffdiff`
+
+```text
+FASTQ
+→ HISAT2
+→ Cuffdiff
+```
+
+### 3. `star_express_limma`
+
+```text
+FASTQ
+→ STAR (transcriptome mode)
+→ eXpress
+→ quant matrix construction
+→ limma
+```
+
+### 4. `star_rsem_deseq2`
+
+```text
+FASTQ
+→ STAR (transcriptome mode)
+→ RSEM
+→ quant matrix construction
+→ DESeq2
+```
+
+### 5. `star_majiq`
+
+```text
+FASTQ
+→ STAR (genome alignment)
+→ MAJIQ config generation
+→ MAJIQ build
+→ MAJIQ deltapsi
+```
+
+---
+
+## Repository structure
+
+```text
+ASBench/
+├── assets/
+│   └── samplesheet.template.csv
+├── bin/
+├── conf/
+│   └── modules.config
+├── demo/
+├── main.nf
+├── nextflow.config
+├── modules/
+│   ├── align/
+│   │   ├── star.nf
+│   │   └── hisat2_cuffdiff.nf
+│   ├── quantify_isoform/
+│   │   ├── stringtie_ballgown.nf
+│   │   ├── express.nf
+│   │   └── rsem.nf
+│   ├── quantify_gene/
+│   │   └── cuffdiff.nf
+│   ├── de/
+│   │   ├── limma.nf
+│   │   └── deseq2.nf
+│   ├── as_event/
+│   │   ├── suppa2_events.nf
+│   │   ├── suppa2_psi.nf
+│   │   ├── suppa2_merge_group.nf
+│   │   ├── suppa2_diffsplice.nf
+│   │   ├── majiq_build.nf
+│   │   └── majiq_delta_psi.nf
+│   └── utils/
+│       ├── build_gene_count_matrix.nf
+│       ├── build_quant_matrix.nf
+│       └── build_majiq_config.nf
+├── scripts/
+│   ├── build_gene_count_matrix.py
+│   ├── build_quant_matrix.py
+│   ├── build_majiq_config.py
+│   ├── run_deseq2.R
+│   └── run_limma.R
+└── README.md
+```
+
+---
+
+## Requirements
+
+- Nextflow (DSL2)
+- Java 11+
+- Apptainer / Singularity recommended
+- Tool-specific dependencies available in containers or system environment:
+  - STAR
+  - HISAT2
+  - StringTie
+  - SUPPA2
+  - eXpress
+  - RSEM
+  - Cuffdiff
+  - MAJIQ
+  - R with DESeq2 / limma / edgeR as needed
+
+---
+
+## Input samplesheet
+
+Example template:
+
+```csv
+sample,group,strandedness,fastq1,fastq2
+D5_1,control,unstranded,/path/D5_1_R1.fq.gz,/path/D5_1_R2.fq.gz
+D5_2,control,unstranded,/path/D5_2_R1.fq.gz,/path/D5_2_R2.fq.gz
+D6_1,test,unstranded,/path/D6_1_R1.fq.gz,/path/D6_1_R2.fq.gz
+D6_2,test,unstranded,/path/D6_2_R1.fq.gz,/path/D6_2_R2.fq.gz
+```
+
+Columns:
+
+- `sample`: unique sample ID
+- `group`: biological condition / contrast group
+- `strandedness`: library strandedness
+- `fastq1`, `fastq2`: paired-end FASTQ files
+
+---
+
+## Usage
+
+### General syntax
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline <pipeline_name> \
+  --samplesheet assets/samplesheet.template.csv \
+  --outdir results \
+  [other pipeline-specific parameters]
+```
+
+---
+
+## Pipeline-specific examples
+
+### 1. STAR + StringTie + SUPPA2
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_stringtie_suppa2 \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
+
+### 2. HISAT2 + Cuffdiff
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline hisat2_cuffdiff \
+  --samplesheet assets/samplesheet.template.csv \
+  --hisat2_index /path/to/hisat2_index \
+  --genome_fasta /path/to/genome.fa \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
+
+### 3. STAR + eXpress + limma
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_express_limma \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --transcriptome_fasta /path/to/transcripts.fa \
+  --outdir results
+```
+
+### 4. STAR + RSEM + DESeq2
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_rsem_deseq2 \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --rsem_index /path/to/rsem_reference \
+  --outdir results
+```
+
+### 5. STAR + MAJIQ
+
+```bash
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline star_majiq \
+  --samplesheet assets/samplesheet.template.csv \
+  --star_index /path/to/star_index \
+  --gtf /path/to/annotation.gtf \
+  --outdir results
+```
+
+---
+
+## Main parameters
+
+### Common
+- `--pipeline`
+- `--samplesheet`
+- `--outdir`
+
+### STAR-based workflows
+- `--star_index`
+- `--star_mode` (set internally in `main.nf` for supported workflows)
+
+### HISAT2/Cuffdiff
+- `--hisat2_index`
+- `--genome_fasta`
+- `--gtf`
+
+### SUPPA2
+- `--gtf`
+- `--threads_suppa2`
+- `--mem_suppa2`
+- `--time_suppa2`
+
+### eXpress
+- `--transcriptome_fasta`
+
+### RSEM
+- `--rsem_index`
+
+### MAJIQ
+- `--gtf`
+- `--threads_majiq`
+
+---
+
+## Output structure
+
+Output depends on pipeline branch. Typical top-level structure:
+
+```text
+results/
+├── 02_align/
+├── 03_quant/
+├── 04_matrix/
+├── 05_de/
+└── 05_as/
+```
+
+Examples:
+
+- `star_stringtie_suppa2`
+  - `02_align/star/`
+  - `03_quant/stringtie/`
+  - `05_as/suppa2/events/`
+  - `05_as/suppa2/psi/`
+  - `05_as/suppa2/merged/`
+  - `05_as/suppa2/diffsplice/`
+
+- `star_express_limma`
+  - `02_align/star/`
+  - `03_quant/express/`
+  - `04_quant_matrix/`
+  - `05_de/limma/`
+
+- `star_rsem_deseq2`
+  - `02_align/star/`
+  - `03_quant/rsem/`
+  - `04_quant_matrix/`
+  - `05_de/deseq2/`
+
+---
+
+## Notes and current limitations
+
+- The current release is focused on a small number of representative workflow combinations rather than all possible tool combinations.
+- `build_gene_count_matrix.nf` is currently included in the repository but not yet wired into a default branch in `main.nf`.
+- MAJIQ support is currently an initial implementation and may require additional configuration depending on the environment.
+- Some additional modules in the repository may still require refinement for production use.
+
+---
+
+## Contact
+
+**Maintainer**
+
+Qingwang Chen  
+qwchen20@fudan.edu.cn
+
+Duo Wang  
+18801232285@163.com
 
 **Project:** ASBench (Alternative Splicing Benchmarking)
