@@ -354,6 +354,4 @@ qwchen20@fudan.edu.cn
 Duo Wang  
 18801232285@163.com
 
-**Project:** ASBench (Alternative Splicing Benchmarking)# ASBench
-
 **Project:** ASBench (Alternative Splicing Benchmarking)
