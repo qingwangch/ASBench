@@ -1,149 +1,198 @@
 # ASBench
 
-ASBench is a modular Nextflow DSL2 pipeline for benchmarking representative short-read RNA-seq analysis workflows for transcript quantification, differential expression, and alternative splicing.
+ASBench is a modular Nextflow DSL2 pipeline for benchmarking representative short-read RNA-seq workflows for transcript quantification, differential analysis, alternative splicing analysis, and quality assessment.
 
-The current first release supports five representative workflow combinations:
-
-- `star_stringtie_suppa2`
-- `hisat2_cuffdiff`
-- `star_express_limma`
-- `star_rsem_deseq2`
-- `star_majiq`
-
-> `star_majiq` is currently an initial implementation and may require additional MAJIQ-specific configuration depending on the runtime environment.
+The current repository includes workflow modules, QC resources, reference-based evaluation materials, and documentation for both benchmarking and practical execution.
 
 ## Overview
 
-ASBench provides a unified framework for running and comparing different combinations of:
+ASBench provides a unified framework for running and comparing combinations of:
 
-- aligners
-- quantification tools
-- differential expression tools
-- splicing analysis tools
+- alignment
+- isoform quantification
+- gene-level quantification
+- differential expression analysis
+- alternative splicing event analysis
+- basic QC assessment
+- reference-based quality scoring
 
-The workflow is organized as reusable Nextflow DSL2 modules.
+The workflow is organized as reusable Nextflow DSL2 modules plus companion Python and R utilities.
 
-## Currently supported workflow combinations
-
-### 1. `star_stringtie_suppa2`
-
-```text
-FASTQ
-→ STAR (genome alignment + geneCounts)
-→ StringTie / Ballgown
-→ SUPPA2 event generation
-→ sample-level PSI / TPM
-→ group-level PSI / TPM merge
-→ SUPPA2 diffSplice
-```
-
-### 2. `hisat2_cuffdiff`
-
-```text
-FASTQ
-→ HISAT2
-→ Cuffdiff
-```
-
-### 3. `star_express_limma`
-
-```text
-FASTQ
-→ STAR (transcriptome mode)
-→ eXpress
-→ quant matrix construction
-→ limma
-```
-
-### 4. `star_rsem_deseq2`
-
-```text
-FASTQ
-→ STAR (transcriptome mode)
-→ RSEM
-→ quant matrix construction
-→ DESeq2
-```
-
-### 5. `star_majiq`
-
-```text
-FASTQ
-→ STAR (genome alignment)
-→ MAJIQ config generation
-→ MAJIQ build
-→ MAJIQ deltapsi
-```
-
-## Repository structure
+## Current project structure
 
 ```text
 ASBench/
 ├── assets/
+│   ├── fastq_screen.conf
 │   └── samplesheet.template.csv
 ├── basic_qc/
+│   ├── basic_qc_metrics.tsv
+│   ├── qc_baseline.tsv
+│   └── qc_cutoffs.tsv
 ├── basic_qc_parameters_and_cutoffs.md
 ├── bin/
+│   ├── build_counts_matrix.py
+│   ├── build_tpm_matrix.py
+│   ├── deseq2.R
+│   ├── edger_ql.R
+│   ├── junction_accuracy.py
+│   ├── limma_voom.R
+│   ├── prepDE.py
+│   └── run_junction_accuracy_nf.py
 ├── conf/
-│   └── modules.config
+│   ├── modules.config
+│   └── wehi_slurm.config
 ├── demo/
+│   └── downsample_1M/
 ├── figures/
+│   ├── qc_distribution_post_alignment.pdf
+│   ├── qc_distribution_post_alignment.png
+│   ├── qc_distribution_pre_alignment.pdf
+│   ├── qc_distribution_pre_alignment.png
+│   ├── qc_distribution_snr.pdf
+│   └── qc_distribution_snr.png
+├── ground_truth/
 ├── main.nf
-├── nextflow.config
 ├── modules/
 │   ├── align/
-│   │   ├── star.nf
-│   │   └── hisat2_cuffdiff.nf
-│   ├── quantify_isoform/
-│   │   ├── stringtie_ballgown.nf
-│   │   ├── express.nf
-│   │   └── rsem.nf
-│   ├── quantify_gene/
-│   │   └── cuffdiff.nf
-│   ├── de/
-│   │   ├── limma.nf
-│   │   └── deseq2.nf
 │   ├── as_event/
-│   │   ├── suppa2_events.nf
-│   │   ├── suppa2_psi.nf
-│   │   ├── suppa2_merge_group.nf
-│   │   ├── suppa2_diffsplice.nf
-│   │   ├── majiq_build.nf
-│   │   └── majiq_delta_psi.nf
+│   ├── de/
+│   ├── qc/
+│   ├── qc_metrics/
+│   ├── quantify_gene/
+│   ├── quantify_isoform/
 │   └── utils/
-│       ├── build_gene_count_matrix.nf
-│       ├── build_quant_matrix.nf
-│       └── build_majiq_config.nf
+├── nextflow.config
+├── optimal_workflow_execution.md
+├── output/
+├── README.md
+├── reference_based_quality_scores.md
+├── reference_quality/
+│   ├── data/
+│   ├── figures/
+│   ├── output/
+│   ├── reference_based_quality_scores.md
+│   └── scripts/
 ├── scripts/
 │   ├── build_gene_count_matrix.py
-│   ├── build_quant_matrix.py
 │   ├── build_majiq_config.py
+│   ├── build_quant_matrix.py
+│   ├── plot_qc_distribution.py
 │   ├── run_deseq2.R
 │   ├── run_limma.R
-│   └── plot_qc_distribution.py
-├── test.sh
-└── README.md
+│   └── run_suppa2_diffsplice.py
+└── test.sh
 ```
+
+## Supported workflow components
+
+### Alignment
+- `STAR`
+- `HISAT2`
+
+### Isoform quantification
+- `StringTie / Ballgown`
+- `RSEM`
+- `eXpress`
+- `Cuffdiff`
+- `prepDE`
+
+### Differential analysis
+- `DESeq2`
+- `edgeR QL`
+- `limma`
+- `limma-voom`
+
+### Alternative splicing / event analysis
+- `SUPPA2`
+- `MAJIQ`
+- `rMATS` is documented as a recommended optimal event workflow, although it is not currently present as a module in this repository.
+
+### Basic QC
+- `FastQC`
+- `FastQ Screen`
+- `Qualimap`
+- `MultiQC`
+
+### QC metrics / reference evaluation
+- junction accuracy evaluation
+- QC baseline comparison
+- reference-based quality score calculation for junctions, isoforms, and events
+
+## Nextflow modules currently included
+
+### `modules/align`
+- `star.nf`
+- `hisat2.nf`
+- `hisat2_cuffdiff.nf`
+
+### `modules/quantify_isoform`
+- `stringtie_ballgown.nf`
+- `rsem.nf`
+- `express.nf`
+- `cuffdiff.nf`
+- `prepde.nf`
+
+### `modules/quantify_gene`
+- `cuffdiff.nf`
+
+### `modules/de`
+- `deseq2.nf`
+- `edger_ql.nf`
+- `limma.nf`
+- `limma_voom.nf`
+
+### `modules/as_event`
+- `suppa2_events.nf`
+- `suppa2_psi.nf`
+- `suppa2_merge_group.nf`
+- `suppa2_diffsplice.nf`
+- `majiq_build.nf`
+- `majiq_delta_psi.nf`
+
+### `modules/qc`
+- `fastqc.nf`
+- `fastq_screen.nf`
+- `multiqc.nf`
+- `qualimap.nf`
+
+### `modules/qc_metrics`
+- `junction_accuracy_all.nf`
+
+### `modules/utils`
+- `build_gene_count_matrix.nf`
+- `build_quant_matrix.nf`
+- `build_majiq_config.nf`
 
 ## Requirements
 
-- Nextflow (DSL2)
-- Java 11+
-- Apptainer / Singularity recommended
-- Tool-specific dependencies available in containers or system environment:
-  - STAR
-  - HISAT2
-  - StringTie
-  - SUPPA2
-  - eXpress
-  - RSEM
-  - Cuffdiff
-  - MAJIQ
-  - R with DESeq2 / limma / edgeR as needed
+- Nextflow DSL2
+- Java 11 or above
+- Python 3 with common scientific packages as needed
+- R with required analysis packages as needed
+- Apptainer / Singularity recommended for reproducibility
+
+Typical tool dependencies used across modules:
+
+- STAR
+- HISAT2
+- StringTie
+- SUPPA2
+- MAJIQ
+- RSEM
+- eXpress
+- Cuffdiff
+- FastQC
+- FastQ Screen
+- Qualimap
+- MultiQC
+- DESeq2
+- edgeR
+- limma
 
 ## Input samplesheet
 
-Example template:
+Example:
 
 ```csv
 sample,group,strandedness,fastq1,fastq2
@@ -155,171 +204,198 @@ D6_2,test,unstranded,/path/D6_2_R1.fq.gz,/path/D6_2_R2.fq.gz
 
 Columns:
 
-- `sample`: unique sample ID
-- `group`: biological condition / contrast group
+- `sample`: unique sample identifier
+- `group`: biological group or comparison group
 - `strandedness`: library strandedness
-- `fastq1`, `fastq2`: paired-end FASTQ files
+- `fastq1`, `fastq2`: paired-end FASTQ paths
 
 ## Usage
 
 ### General syntax
 
 ```bash
-nextflow run main.nf   -profile wehi   --pipeline <pipeline_name>   --samplesheet assets/samplesheet.template.csv   --outdir results   [other pipeline-specific parameters]
+nextflow run main.nf \
+  -profile wehi \
+  --pipeline <pipeline_name> \
+  --samplesheet assets/samplesheet.template.csv \
+  --outdir results \
+  [additional parameters]
 ```
 
-### Pipeline-specific examples
+## Representative workflow combinations
 
-#### 1. STAR + StringTie + SUPPA2
+### 1. STAR + StringTie + SUPPA2
 
-```bash
-nextflow run main.nf   -profile wehi   --pipeline star_stringtie_suppa2   --samplesheet assets/samplesheet.template.csv   --star_index /path/to/star_index   --gtf /path/to/annotation.gtf   --outdir results
+```text
+FASTQ
+→ STAR
+→ StringTie / Ballgown
+→ SUPPA2 event generation
+→ sample-level PSI / TPM
+→ group-level merge
+→ SUPPA2 diffSplice
 ```
 
-#### 2. HISAT2 + Cuffdiff
+### 2. HISAT2 + Cuffdiff
 
-```bash
-nextflow run main.nf   -profile wehi   --pipeline hisat2_cuffdiff   --samplesheet assets/samplesheet.template.csv   --hisat2_index /path/to/hisat2_index   --genome_fasta /path/to/genome.fa   --gtf /path/to/annotation.gtf   --outdir results
+```text
+FASTQ
+→ HISAT2
+→ Cuffdiff
 ```
 
-#### 3. STAR + eXpress + limma
+### 3. STAR + eXpress + limma
 
-```bash
-nextflow run main.nf   -profile wehi   --pipeline star_express_limma   --samplesheet assets/samplesheet.template.csv   --star_index /path/to/star_index   --transcriptome_fasta /path/to/transcripts.fa   --outdir results
+```text
+FASTQ
+→ STAR
+→ eXpress
+→ quant matrix construction
+→ limma
 ```
 
-#### 4. STAR + RSEM + DESeq2
+### 4. STAR + RSEM + DESeq2
 
-```bash
-nextflow run main.nf   -profile wehi   --pipeline star_rsem_deseq2   --samplesheet assets/samplesheet.template.csv   --star_index /path/to/star_index   --rsem_index /path/to/rsem_reference   --outdir results
+```text
+FASTQ
+→ STAR
+→ RSEM
+→ quant matrix construction
+→ DESeq2
 ```
 
-#### 5. STAR + MAJIQ
+### 5. STAR + MAJIQ
 
-```bash
-nextflow run main.nf   -profile wehi   --pipeline star_majiq   --samplesheet assets/samplesheet.template.csv   --star_index /path/to/star_index   --gtf /path/to/annotation.gtf   --outdir results
+```text
+FASTQ
+→ STAR
+→ MAJIQ config generation
+→ MAJIQ build
+→ MAJIQ deltapsi
 ```
 
-## Basic QC metrics, cutoffs, and visualization
+## Basic QC resources
 
-ASBench can be used to summarize and visualize basic QC metrics for input sample(s) by combining:
+The repository now includes a dedicated basic QC section:
 
-- **FastQC**
-- **FastQ Screen**
-- **Qualimap**
-- **RSeQC**
-- **STAR-StringTie-SUPPA2-based SNR calculation**
-
-### Basic QC metric categories
-
-| Category | Metric | Source tool / workflow |
-|---|---|---|
-| Pre-alignment QC | Strand specificity | RSeQC |
-| Pre-alignment QC | Number of Reads (million) | FastQC / FastQ Screen |
-| Pre-alignment QC | Number of paired-end reads (million) | FastQC / FastQ Screen |
-| Pre-alignment QC | Q30 (%) | FastQC |
-| Pre-alignment QC | Q20 (%) | FastQC |
-| Pre-alignment QC | GC (%) | FastQC |
-| Pre-alignment QC | Paired-end reads length (bp) | FastQC |
-| Pre-alignment QC | Duplicate rate (%) | FastQC / Qualimap |
-| Post-alignment QC | Unique mapped (%) | Qualimap |
-| Post-alignment QC | Unmapped (%) | Qualimap |
-| Post-alignment QC | Multiple mapped (%) | Qualimap |
-| Post-alignment QC | Total mapped (%) | Qualimap |
-| Post-alignment QC | Mismatch bases rate (%) | Qualimap |
-| Post-alignment QC | 5' - 3' bias | Qualimap / RSeQC |
-| Post-alignment QC | Mapped to exonic region (%) | Qualimap |
-| Post-alignment QC | Mapped to intronic region (%) | Qualimap |
-| Post-alignment QC | Mapped to intergentic region (%) | Qualimap |
-| SNR | Gene-level SNR | STAR-StringTie-SUPPA2 TPM/PSI-based analysis |
-| SNR | Isoform-level SNR | STAR-StringTie-SUPPA2 TPM/PSI-based analysis |
-| SNR | AS event-level SNR | STAR-StringTie-SUPPA2 TPM/PSI-based analysis |
-
-### Example QC cutoff rules
-
-| Metric | QC cutoff |
-|---|---|
-| Number of Reads (million) | `>20` |
-| Number of paired-end reads (million) | `>85` |
-| Q30 (%) | `>90` |
-| Duplicate rate (%) | `<30` |
-| Unique mapped (%) | `>80` |
-| Total mapped (%) | `>90` |
-| 5' - 3' bias | `0.8-1.2` |
-| Mapped to intergentic region (%) | `<10` |
-| Gene-level SNR | `>12` |
-| Isoform-level SNR | `>10` |
-| AS event-level SNR | `>10` |
-
-### QC distribution plots
-
-QC metric distributions can be visualized by plotting the input sample(s) against the 42-laboratory reference background.
-
-If the generated figures are placed under `figures/`, they can be displayed directly in Markdown.
-
-#### Pre-alignment QC
-![Pre-alignment QC distribution](figures/qc_distribution_pre_alignment.png)
-
-#### Post-alignment QC
-![Post-alignment QC distribution](figures/qc_distribution_post_alignment.png)
-
-#### SNR
-![SNR distribution](figures/qc_distribution_snr.png)
-
-### Plot generation example
-
-```bash
-python scripts/plot_qc_distribution.py   --baseline qc_baseline.tsv   --input-metrics basic_qc_metrics.tsv   --cutoffs qc_cutoffs.tsv   --outdir figures
-```
-
-### Full QC documentation
-
-For the full QC metric definitions, reference distributions, cutoff table, and figure embedding template, see:
-
+- `basic_qc/basic_qc_metrics.tsv`
+- `basic_qc/qc_baseline.tsv`
+- `basic_qc/qc_cutoffs.tsv`
 - `basic_qc_parameters_and_cutoffs.md`
 
-## Main parameters
+This part documents:
 
-### Common
+- pre-alignment QC
+- post-alignment QC
+- SNR-based QC
+- QC cutoff interpretation
+- QC distribution plotting
 
-- `--pipeline`
-- `--samplesheet`
-- `--outdir`
+QC distribution figures are currently stored in the top-level `figures/` directory:
 
-### STAR-based workflows
+- `figures/qc_distribution_pre_alignment.png`
+- `figures/qc_distribution_post_alignment.png`
+- `figures/qc_distribution_snr.png`
 
-- `--star_index`
-- `--star_mode` (set internally in `main.nf` for supported workflows)
+The plotting utility is:
 
-### HISAT2/Cuffdiff
+- `scripts/plot_qc_distribution.py`
 
-- `--hisat2_index`
-- `--genome_fasta`
-- `--gtf`
+## Reference-based quality score resources
 
-### SUPPA2
+The repository also includes a dedicated reference-based evaluation section:
 
-- `--gtf`
-- `--threads_suppa2`
-- `--mem_suppa2`
-- `--time_suppa2`
+- `reference_based_quality_scores.md`
+- `reference_quality/reference_based_quality_scores.md`
 
-### eXpress
+The `reference_quality/` directory contains:
 
-- `--transcriptome_fasta`
+### Data
+- `42_lab_consistency_distribution_clean.csv`
+- `42_lab_consistency_distribution.csv`
+- `Junction_anotated_truth.csv`
+- `Junction_novel_truth.csv`
+- `Ratio-based_AS_reference_datasets.csv`
+- `Ratio-based_DAS_reference_datasets.csv.csv`
+- `RefData_DEIs_all_isoforms_classified_u_20250522.csv`
+- `ref_expr_b7_p4_s84_u_20250516.csv`
 
-### RSEM
+### Scripts
+- `compute_junction_quality_scores.py`
+- `compute_isoform_rmse_scores.py`
+- `compute_event_pcc_scores.py`
+- `compute_reference_quality.py`
+- `plot_reference_quality_distributions.py`
 
-- `--rsem_index`
+### Current outputs
+- `reference_quality/output/junction_quality_scores.tsv`
+- `reference_quality/output/isoform_quality_scores.tsv`
+- `reference_quality/output/event_quality_scores.tsv`
 
-### MAJIQ
+### Current figures
+- `reference_quality/figures/junction_f1_distribution.png`
+- `reference_quality/figures/junction_novel_fnr_distribution.png`
+- `reference_quality/figures/isoform_rmse_distribution.png`
+- `reference_quality/figures/event_pcc_distribution.png`
 
-- `--gtf`
-- `--threads_majiq`
+## Optimal workflow recommendation
 
-## Output structure
+A dedicated summary document is included:
 
-Output depends on pipeline branch. Typical top-level structure:
+- `optimal_workflow_execution.md`
+
+Current recommended best-practice summary:
+
+### Isoform
+```text
+STAR + (RSEM / eXpress / Cuffdiff) + edgeR v1/v2
+```
+
+### Event
+```text
+STAR + SUPPA2 / rMATS
+```
+
+## Utility scripts
+
+### Top-level `scripts/`
+- `build_gene_count_matrix.py`
+- `build_majiq_config.py`
+- `build_quant_matrix.py`
+- `plot_qc_distribution.py`
+- `run_deseq2.R`
+- `run_limma.R`
+- `run_suppa2_diffsplice.py`
+
+### `bin/`
+- `build_counts_matrix.py`
+- `build_tpm_matrix.py`
+- `deseq2.R`
+- `edger_ql.R`
+- `junction_accuracy.py`
+- `limma_voom.R`
+- `prepDE.py`
+- `run_junction_accuracy_nf.py`
+
+## Configuration
+
+Configuration files currently included:
+
+- `nextflow.config`
+- `conf/modules.config`
+- `conf/wehi_slurm.config`
+
+## Demo data
+
+The repository includes a small demo dataset:
+
+- `demo/downsample_1M/`
+
+This contains downsampled paired-end FASTQ files for D5 and D6 samples for lightweight testing.
+
+## Typical outputs
+
+Depending on the selected branch, results are typically organized into:
 
 ```text
 results/
@@ -330,43 +406,31 @@ results/
 └── 05_as/
 ```
 
-Examples:
+Additional QC and evaluation outputs may be written into:
 
-### `star_stringtie_suppa2`
-
-```text
-02_align/star/
-03_quant/stringtie/
-05_as/suppa2/events/
-05_as/suppa2/psi/
-05_as/suppa2/merged/
-05_as/suppa2/diffsplice/
-```
-
-### `star_express_limma`
-
-```text
-02_align/star/
-03_quant/express/
-04_quant_matrix/
-05_de/limma/
-```
-
-### `star_rsem_deseq2`
-
-```text
-02_align/star/
-03_quant/rsem/
-04_quant_matrix/
-05_de/deseq2/
-```
+- `basic_qc/`
+- `figures/`
+- `output/`
+- `reference_quality/output/`
+- `reference_quality/figures/`
 
 ## Notes and current limitations
 
-- The current release is focused on a small number of representative workflow combinations rather than all possible tool combinations.
-- `build_gene_count_matrix.nf` is currently included in the repository but not yet wired into a default branch in `main.nf`.
-- MAJIQ support is currently an initial implementation and may require additional configuration depending on the environment.
-- Some additional modules in the repository may still require refinement for production use.
+- The repository includes representative benchmark workflows rather than every possible tool combination.
+- `rMATS` is currently described in the optimal workflow recommendation but is not yet implemented as a module in `modules/`.
+- Some scripts still use placeholder or manually supplied input values and may require project-specific adaptation before production use.
+- The repository contains both top-level and `reference_quality/`-specific documentation; keep them synchronized when updating workflows.
+- `ground_truth/` is present in the repository but its internal structure is not documented here yet.
+
+## Documentation included
+
+Current documentation files include:
+
+- `README.md`
+- `basic_qc_parameters_and_cutoffs.md`
+- `reference_based_quality_scores.md`
+- `reference_quality/reference_based_quality_scores.md`
+- `optimal_workflow_execution.md`
 
 ## Contact
 
