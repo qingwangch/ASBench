@@ -187,15 +187,15 @@ Sequencing QC should be judged against the cutoff table above.
 
 ### Examples
 
-*   **Number of Reads (million)** passes if `&gt;20`
-*   **Q30 (%)** passes if `&gt;90`
-*   **Duplicate rate (%)** passes if `&lt;30`
-*   **Unique mapped (%)** passes if `&gt;80`
-*   **5' - 3' bias** passes if between `0.8` and `1.2`
-*   **Mapped to intergentic region (%)** passes if `&lt;10`
-*   **Gene-level SNR** passes if `&gt;12`
-*   **Isoform-level SNR** passes if `&gt;10`
-*   **AS event-level SNR** passes if `&gt;10`
+- **Number of Reads (million)** passes if `>20`
+- **Q30 (%)** passes if `>90`
+- **Duplicate rate (%)** passes if `<30`
+- **Unique mapped (%)** passes if `>80`
+- **5' - 3' bias** passes if between `0.8` and `1.2`
+- **Mapped to intergentic region (%)** passes if `<10`
+- **Gene-level SNR** passes if `>12`
+- **Isoform-level SNR** passes if `>10`
+- **AS event-level SNR** passes if `>10`
 
 ## Suggested Next Step
 
