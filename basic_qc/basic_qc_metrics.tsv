@@ -1,0 +1,2 @@
+Sample	Strand specificity	Number of Reads (million)	Number of paired-end reads (million)	Q30 (%)	Q20 (%)	GC (%)	Paired-end reads length (bp)	Duplicate rate (%)	Unique mapped (%)	Unmapped (%)	Multiple mapped (%)	Total mapped (%)	Mismatch bases rate (%)	5' - 3' bias	Mapped to exonic region (%)	Mapped to intronic region (%)	Mapped to intergentic region (%)	Gene-level SNR	Isoform-level SNR	AS event-level SNR
+input_sample_01	0.91	92.75	41.21	93.37	97.94	48.9	291.51	19.67	91.94	2.5	91.75	97.19	0.31	1.11	44.4	38.92	3.5	21.06	21.29	10.74

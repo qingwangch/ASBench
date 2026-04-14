@@ -1,0 +1,20 @@
+metric	cutoff
+Number of Reads (million)	>20
+Number of paired-end reads (million)	>85
+Q30 (%)	>90
+Q20 (%)	/
+GC (%)	/
+Paired-end reads length (bp)	/
+Duplicate rate (%)	<30
+Unique mapped (%)	>80
+Unmapped (%)	/
+Multiple mapped (%)	/
+Total mapped (%)	>90
+Mismatch bases rate (%)	/
+5' - 3' bias	0.8-1.2
+Mapped to exonic region (%)	/
+Mapped to intronic region (%)	/
+Mapped to intergentic region (%)	<10
+Gene-level SNR	>12
+Isoform-level SNR	>10
+AS event-level SNR	>10

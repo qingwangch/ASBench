@@ -1,0 +1,2 @@
+metric	input_value	quality_score	pass_threshold	pass
+event_PCC	0.92	0.9761904761904762	0.5	True

@@ -1,0 +1,2 @@
+metric	input_value	quality_score	pass_threshold	pass
+isoform_RMSE	0.36	0.8095238095238095	0.5	True
