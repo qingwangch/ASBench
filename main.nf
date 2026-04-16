@@ -15,6 +15,7 @@ include { SUPPA2_MERGE_GROUP }      from './modules/as_event/suppa2_merge_group'
 include { SUPPA2_DIFFSPLICE }       from './modules/as_event/suppa2_diffsplice'
 include { MAJIQ_BUILD }             from './modules/as_event/majiq_build'
 include { MAJIQ_DELTAPSI }          from './modules/as_event/majiq_delta_psi'
+include { RMATS }                   from './modules/as_event/rmats'          // ADDED
 
 include { BUILD_GENE_COUNT_MATRIX } from './modules/utils/build_gene_count_matrix'
 include { BUILD_QUANT_MATRIX }      from './modules/utils/build_quant_matrix'
@@ -45,9 +46,17 @@ params.threads_suppa2      = params.threads_suppa2 ?: 8
 params.threads_hisat2      = params.threads_hisat2 ?: 8
 params.threads_rsem        = params.threads_rsem ?: 8
 params.threads_majiq       = params.threads_majiq ?: 8
+params.threads_rmats       = params.threads_rmats ?: 8                     // ADDED
 
 params.mem_suppa2          = params.mem_suppa2 ?: '16 GB'
 params.time_suppa2         = params.time_suppa2 ?: '6h'
+
+params.rmats_read_length   = params.rmats_read_length ?: 150               // ADDED
+params.rmats_lib_type      = params.rmats_lib_type ?: 'fr-unstranded'      // ADDED
+params.rmats_task          = params.rmats_task ?: 'both'                   // ADDED
+params.rmats_allow_clipping = params.rmats_allow_clipping ?: false         // ADDED
+params.rmats_novel_ss      = params.rmats_novel_ss ?: false                // ADDED
+params.rmats_variable_read_length = params.rmats_variable_read_length ?: false // ADDED
 
 // ---------------------- workflow ---------------------
 workflow {
@@ -311,6 +320,56 @@ workflow {
             }
 
         MAJIQ_DELTAPSI(ch_majiq_group)
+    }
+
+    /*
+     * Pipeline 6
+     * star_genome + rmats
+     */
+    else if( params.pipeline == 'star_rmats' ) {
+
+        if( !params.star_index ) error "Missing --star_index"
+        if( !params.gtf )        error "Missing --gtf"
+
+        params.star_mode = 'genome_geneCounts'
+
+        def (ch_star_main, ch_star_txbam) = STAR_ALIGN(ch_reads)
+
+        /*
+         * Expected STAR main output:
+         * (sample, group, strand, bam, sj, log, gc)
+         */
+        def ch_bam_only = ch_star_main.map { s, g, strand, bam, sj, log, gc ->
+            tuple(g, bam)
+        }
+
+        def ch_group_bams = ch_bam_only
+            .groupTuple()
+            .map { g, bams -> tuple(g, bams) }
+
+        def ch_rmats_input = ch_group_bams
+            .collect()
+            .map { groups ->
+
+                if( groups.size() != 2 ) {
+                    error "Need exactly 2 groups for rMATS, got: ${groups.collect{ it[0] }}"
+                }
+
+                groups = groups.sort { a, b -> a[0] <=> b[0] }
+
+                def c1 = groups[0]
+                def c2 = groups[1]
+
+                tuple(
+                    c1[0], c1[1],
+                    c2[0], c2[1]
+                )
+            }
+
+        RMATS(
+            ch_rmats_input,
+            Channel.value(file(params.gtf))
+        )
     }
 
     else {

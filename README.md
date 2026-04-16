@@ -99,14 +99,14 @@ ASBench/
 
 ### Differential analysis
 - `DESeq2`
-- `edgeR QL`
+- `edgeR`
 - `limma`
 - `limma-voom`
 
 ### Alternative splicing / event analysis
 - `SUPPA2`
 - `MAJIQ`
-- `rMATS` is documented as a recommended optimal event workflow, although it is not currently present as a module in this repository.
+- `rMATS`
 
 ### Basic QC
 - `FastQC`
@@ -149,6 +149,7 @@ ASBench/
 - `suppa2_diffsplice.nf`
 - `majiq_build.nf`
 - `majiq_delta_psi.nf`
+- `rmats.nf`
 
 ### `modules/qc`
 - `fastqc.nf`
@@ -179,6 +180,7 @@ Typical tool dependencies used across modules:
 - StringTie
 - SUPPA2
 - MAJIQ
+- rMATS
 - RSEM
 - eXpress
 - Cuffdiff
@@ -272,6 +274,14 @@ FASTQ
 → MAJIQ config generation
 → MAJIQ build
 → MAJIQ deltapsi
+```
+
+### 6. STAR + rMATS
+
+```text
+FASTQ
+→ STAR
+→ rMATS
 ```
 
 ## Basic QC resources
@@ -385,6 +395,19 @@ Configuration files currently included:
 - `conf/modules.config`
 - `conf/wehi_slurm.config`
 
+rMATS-related parameters are configured through the main config/profile files and include:
+
+- `threads_rmats`
+- `rmats_memory`
+- `rmats_time`
+- `rmats_read_length`
+- `rmats_lib_type`
+- `rmats_task`
+- `rmats_allow_clipping`
+- `rmats_novel_ss`
+- `rmats_variable_read_length`
+- `rmats_container`
+
 ## Demo data
 
 The repository includes a small demo dataset:
@@ -414,10 +437,16 @@ Additional QC and evaluation outputs may be written into:
 - `reference_quality/output/`
 - `reference_quality/figures/`
 
+For rMATS runs, outputs are expected under:
+
+```text
+results/05_as/rmats/<group1>_vs_<group2>/
+```
+
 ## Notes and current limitations
 
 - The repository includes representative benchmark workflows rather than every possible tool combination.
-- `rMATS` is currently described in the optimal workflow recommendation but is not yet implemented as a module in `modules/`.
+- The current first-pass `rMATS` implementation assumes exactly two groups in the samplesheet.
 - Some scripts still use placeholder or manually supplied input values and may require project-specific adaptation before production use.
 - The repository contains both top-level and `reference_quality/`-specific documentation; keep them synchronized when updating workflows.
 - `ground_truth/` is present in the repository but its internal structure is not documented here yet.
